@@ -150,7 +150,10 @@ population query validity.
 
 This scope is narrower than a general correction of PD. A validity rule is a
 declared operational notion of query compatibility, not causal overlap or a
-guarantee of model accuracy. CSPD and RCPD change the reference population and
+guarantee of model accuracy. The causal literature on positivity and on
+trimming to a common-support subpopulation [@crump2009; @petersen2012] supplies
+the closest analogy, and PD itself admits a back-door reading under explicit
+assumptions [@zhao2021], but no such assumptions are made here. CSPD and RCPD change the reference population and
 must be reported with their information distortion and effective sample size.
 The empirical study therefore asks when that declared population change alters
 the fitted interpretation and when it merely records a support warning.
@@ -166,14 +169,29 @@ with effects of correlated features [@apley2020; @molnar2024]. Conditional-
 subgroup PDPs instead report several local curves, one for each interpretable
 partition of the context space [@molnar2024]. ALE accumulates local prediction
 differences rather than averaging one fixed intervention distribution
-[@apley2020]. These are valuable conditional or local descriptions, but none is
+[@apley2020], and its differential variant avoids constructing artificial
+points altogether [@gkolemis2023]. These are valuable conditional or local descriptions, but none is
 one global intervention curve over an unchanged population.
+
+Replacing the PD averaging measure to avoid extrapolation is itself an
+established idea, and @hooker2007 is its closest structural precedent. That
+work replaces the product measure by a general weight $w$ and defines effects
+as an $L^2$ projection under $\langle f,g\rangle_w$, explicitly because
+product measures place mass where the model was never fitted. The construction
+here differs in what is being built: @hooker2007 weights the joint space to
+obtain a hierarchically orthogonal functional decomposition, whereas we fix a
+distribution over the context variables alone, determine it by simultaneous
+validity constraints across a declared grid, and report a single curve. Neither
+the grid-wise intersection $\mathcal C_j(G)$ nor the query-validity constraint
+system has an analogue in that decomposition.
 
 Query plausibility and robustness also have direct precedents. Practical PDP
 software uses rug marks and bivariate convex-hull restriction to discourage
-interpretation away from observed data [@greenwell2017]. @yeh2021 downweight
-out-of-distribution ICE queries when constructing an ICE-derived feature-impact
-measure, while @baniecki2024 bound changes in PD and ALE under data or model
+interpretation away from observed data [@greenwell2017]. Manifold-restricted
+interventional attributions likewise confine evaluations to a declared domain
+of validity [@taufiq2023]. @yeh2021 downweight
+out-of-distribution queries of individual conditional expectation curves
+[@goldstein2015] when constructing an ICE-derived feature-impact measure, while @baniecki2024 bound changes in PD and ALE under data or model
 perturbations. These methods respectively modify the displayed grid, an
 ICE-derived summary, or the perturbation question; they do not construct one
 support-qualified reference distribution used unchanged over an intervention
@@ -246,6 +264,19 @@ $$
 $$ {#eq-range-bounds}
 Sharper Lipschitz envelopes are given in the online supplement; they retain
 ordinary PD as the estimand rather than replacing its reference population.
+
+@eq-range-bounds refines a published inequality. Lemma 2 of @baniecki2024
+bounds the effect of a model perturbation on partial dependence by
+$\lVert f-\widetilde f\rVert_\infty$, a supremum over the whole input space
+with unit multiplier. Every $\widetilde f\in\mathcal A_z(f)$ agrees with $f$
+on $\mathcal V_z$ and may differ elsewhere by as much as $y_+-y_-$, so that
+bound is insensitive to support and stays at its worst case however small the
+rejected mass becomes. The envelope above has width
+$(y_+-y_-)\operatorname{PER}_j(z)$: the supremum is localized to the rejected
+region and the multiplier is the rejected query mass, so the bound vanishes as
+the displayed queries become supported. A per-point tightening of the constant
+is already noted in Remark 1 of @baniecki2024; the refinement here is the
+localization, not the constant.
 
 For a finite grid $G$, define the contexts valid everywhere and their mass by
 $$
@@ -397,7 +428,9 @@ further evaluation split is used when uncertainty for the selected curve is
 reported. Calibration uses the split-conformal order statistic
 $\lceil(n_{\rm cal}+1)(1-\alpha)\rceil$, which gives marginal calibration for
 the chosen score under exchangeability but does not make ISC conditionally
-calibrated at fixed $z$. These are predictive model-query estimands, not causal
+calibrated at fixed $z$; distribution-free conditional coverage is not
+attainable in general [@barber2021], so the rule is used as a calibrated
+acceptance criterion and not as a support estimator. These are predictive model-query estimands, not causal
 effects.
 
 The primary inferential target is explicitly conditional. Let
