@@ -570,7 +570,11 @@ strictly convex finite-dimensional problem on the pattern simplex. Existence
 and uniqueness follow from compactness and strict convexity. Under Slater's
 condition, strong duality and the Lagrangian first-order condition yield
 $q_a\propto p_a\exp(\lambda^\top a)$ and hence the exponential tilt and dual
-objective stated in the main article. If $P$ is feasible, its zero KL cost is
+objective stated in the main article. This is the Fenchel dual of an
+$I$-projection under inequality constraints, for which @bhattacharya1995 give
+the general equivalence; the constraints here are the validity inequalities
+rather than moment equalities, which is precisely the case their formulation
+covers. If $P$ is feasible, its zero KL cost is
 minimal and unique.
 
 For the hard limit, put $C=\{h_1=\cdots=h_K=1\}$ and
