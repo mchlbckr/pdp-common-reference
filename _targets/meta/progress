@@ -1,0 +1,5 @@
+name|type|parent|branches|progress
+case_study_s16|stem|case_study_s16|0|skipped
+simulation_s30|stem|simulation_s30|0|skipped
+s30_lipschitz_wine_figure|stem|s30_lipschitz_wine_figure|0|dispatched
+s30_lipschitz_wine_figure|stem|s30_lipschitz_wine_figure|0|completed

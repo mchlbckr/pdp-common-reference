@@ -1,0 +1,33 @@
+\usepackage{amsmath,booktabs}
+\usepackage{lastpage}
+
+\newcommand{\ISC}{\operatorname{ISC}}
+\newcommand{\PER}{\operatorname{PER}}
+\newcommand{\CSPD}{\operatorname{CSPD}}
+\newcommand{\RCPD}{\operatorname{RCPD}}
+\newcommand{\KL}{D_{\mathrm{KL}}}
+\newcommand{\Vset}{\mathcal{V}}
+\newcommand{\Cset}{\mathcal{C}}
+\newcommand{\E}{\mathbb{E}}
+
+\ShortHeadings{$short-title$}{$short-author$}
+\firstpageno{1}
+
+\title{$title$}
+\author{
+$for(by-author)$
+\name $it.name.literal$ \\
+$for(it.affiliations)$
+\addr $it.name$ \\
+$endfor$
+$if(it.email)$
+\email $it.email$ \\
+$endif$
+$if(it.orcid)$
+\addr ORCID: $it.orcid$
+$endif$
+$sep$
+\And
+$endfor$
+}
+

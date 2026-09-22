@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use this software or the accompanying results, please cite the article."
+title: "Partial Dependence Beyond the Data: Support Diagnostics and Common-Reference Feature Effects"
+abstract: >-
+  Research code, simulation pipeline, and Quarto manuscript sources for support
+  diagnostics and common-reference feature effects in partial-dependence
+  analysis.
+type: software
+authors:
+  - family-names: "Bücker"
+    given-names: "Michael"
+    orcid: "https://orcid.org/0000-0003-0045-8460"
+    affiliation: "FH Münster, Münster School of Business"
+    email: "michael.buecker@fh-muenster.de"
+license: MIT
+repository-code: "https://github.com/mchlbckr/pdp-common-reference"
+version: "1.0.0"
+date-released: "2026-09-22"
+keywords:
+  - interpretable machine learning
+  - partial dependence
+  - extrapolation
+  - support diagnostics
+  - reproducible research

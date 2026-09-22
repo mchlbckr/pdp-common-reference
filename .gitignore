@@ -1,0 +1,27 @@
+# renv library is restored from renv.lock, never committed
+renv/library/
+renv/staging/
+renv/python/
+renv/sandbox/
+
+# Quarto caches and generated intermediates
+.quarto/
+paper/.quarto/
+paper/*.tex
+
+# rendered manuscript: regenerate with `quarto render paper`
+paper/_output/*.pdf
+paper/_output/*.aux
+paper/_output/*.log
+paper/_output/*.out
+
+# working scratch
+tmp/
+*.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+
+# OS noise
+.DS_Store
+Thumbs.db

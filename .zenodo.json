@@ -1,0 +1,25 @@
+{
+  "upload_type": "software",
+  "title": "Partial Dependence Beyond the Data: Support Diagnostics and Common-Reference Feature Effects (research archive)",
+  "version": "1.0.0",
+  "language": "eng",
+  "access_right": "open",
+  "license": "mit",
+  "creators": [
+    {
+      "name": "Bücker, Michael",
+      "orcid": "0000-0003-0045-8460",
+      "affiliation": "FH Münster, Münster School of Business"
+    }
+  ],
+  "description": "<p>Research code, simulation pipeline, and manuscript sources accompanying <em>Partial Dependence Beyond the Data: Support Diagnostics and Common-Reference Feature Effects</em>.</p><p>Partial-dependence plots may evaluate a fitted model at feature combinations that the data represent poorly. This archive turns that problem into an explicit support audit and characterizes when a single reference population remains valid over a displayed grid. It contains in-support-coverage (ISC), hard common-support partial-dependence (CSPD), and relaxed common-reference (RCPD) estimators, an exact empirical solver for interval validity, ALE, conditional-curve and subgroup-PDP baselines, and an independent audit split that certifies simultaneous query validity with explicit abstention when no candidate reference can be certified.</p><p>The archive includes 34 simulation studies, a <code>targets</code> pipeline, 229 unit tests, and the Quarto manuscript sources. Stored target objects and figure panels are included, so both PDFs can be re-rendered without rerunning the pipeline. The R environment is pinned in <code>renv.lock</code> (R 4.5.3, 79 packages).</p><p>No raw data is redistributed. <code>data/README.md</code> provides download commands, licences, and SHA-256 checksums for the Wine Quality, Bank Marketing, Online Shoppers, and California Housing datasets.</p>",
+  "keywords": [
+    "interpretable machine learning",
+    "partial dependence",
+    "extrapolation",
+    "support diagnostics",
+    "feature effects",
+    "reproducible research",
+    "R"
+  ]
+}
