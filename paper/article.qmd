@@ -719,10 +719,17 @@ the present claims pending a dedicated novelty and inferential analysis.
 
 ## Code and data availability
 
-The submission archive contains the R implementation, tests, fixed seeds,
-result objects, source archive, `renv.lock`, and a `targets` pipeline that
-regenerates every reported table and figure. Data acquisition and redistribution
-conditions are documented in the archive.
+The research archive is deposited on Zenodo under
+DOI [10.5281/zenodo.22904255](https://doi.org/10.5281/zenodo.22904255) and
+developed at <https://github.com/mchlbckr/pdp-common-reference>. It contains
+the R implementation, unit tests, fixed seeds, stored result objects,
+`renv.lock`, and a `targets` pipeline that regenerates every reported table and
+figure. The manuscript sources are included, so each reported number can be
+traced to the target object it is computed from.
+
+No raw data is redistributed. The archive documents, for every dataset, the
+original source, licence, download command, and SHA-256 checksum needed to
+reconstruct the exact inputs.
 
 ```{=latex}
 \acks{No funding was received for this work. The author declares no competing
