@@ -1,5 +1,8 @@
 # Partial Dependence Beyond the Data
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22904255.svg)](https://doi.org/10.5281/zenodo.22904255)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 Research code, simulation pipeline, and Quarto manuscript sources for
 *Partial Dependence Beyond the Data: Support Diagnostics and Common-Reference
 Feature Effects*.
@@ -89,6 +92,13 @@ including expected runtimes and the environment the results were produced in.
 
 If you use this code or the accompanying results, please cite the article and
 this archive; see [`CITATION.cff`](CITATION.cff).
+
+The archive is deposited on Zenodo:
+
+* Concept DOI [10.5281/zenodo.22904255](https://doi.org/10.5281/zenodo.22904255)
+  always resolves to the most recent version and is the one to cite in general.
+* Version DOI [10.5281/zenodo.22904256](https://doi.org/10.5281/zenodo.22904256)
+  pins release v1.0.0 exactly.
 
 ## Licence
 
