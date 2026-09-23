@@ -62,8 +62,9 @@ s30_width <- function(scenario, variable) {
 All experiments use independent training, calibration, and evaluation splits;
 fixed seeds and complete parameter grids are stored in the targets pipeline.
 The broad matrix has sample sizes 200/200/400, a 21-point grid, correlations
-0.2, 0.5, and 0.8, grid half-widths 0.4, 0.75, and 1.1, two validity learners,
-six prediction-model classes, and 100 repetitions. The focused relaxation
+0.2, 0.5, and 0.8, grid half-widths 0.4, 0.75, and 1.1, five validity rules
+(oracle, split conformal, conditional density, locally scaled, and kNN), six
+prediction-model classes, and 100 repetitions. The focused relaxation
 study uses 1,000 evaluation rows, $\rho=0.8$, $\alpha=0.05$, and
 $\epsilon\in\{0,0.05,0.10,0.20,0.30\}$ over 100 repetitions.
 
@@ -118,19 +119,37 @@ The full six-model matrix crosses model class, correlation, intervention range,
 and validity learner. It is a stress test of the diagnostic geometry rather
 than a ranking of feature-effect methods.
 
+The spread across validity rules in @fig-s-matrix-gamma carries a warning for
+any analysis that treats $\gamma_j(G)$ as a decision quantity. At correlation
+0.8 and the widest displayed width the kNN rule reports an intersection mass of
+0.67 where the oracle rule gives 0.08, an overstatement of almost an order of
+magnitude: a flexible learned rule accepts queries the data do not support, and
+the contract then looks satisfiable when it is clearly violated. The direction
+is not universal. @sec-supplement-nonlinear reports the complementary case, in
+which the same flexibility lets kNN track a curved validity boundary that the
+linear rules miss. Flexibility therefore cuts both ways depending on the
+geometry, which is why the main article uses the oracle rule when it reports
+the intersection mass as a property of the dependence structure, and why an
+applied analysis should report $\gamma_j(G)$ under more than one rule.
+
 ::: {#fig-s-experiment-matrix layout-ncol=2}
 ![Hard common mass $\widehat\gamma(G)$.](../results/s14-experiment-matrix-a.png){#fig-s-matrix-gamma}
 
 ![Pointwise support coverage $\widehat{\mathrm{ISC}}^P$.](../results/s14-experiment-matrix-b.png){#fig-s-matrix-isc}
 
-Broad simulation matrix at the widest displayed half-width. The four series in
-each panel are the validity rules, in the order oracle, split residual, locally
-scaled, and kNN, reading downwards at correlation 0.8; they are not the grid
-widths, which are tabulated by correlation in the main article. Points
-summarize 100 repetitions for each declared combination, pooled across the six
-prediction-model classes; error bars are twice the Monte-Carlo standard error.
-Note that $\widehat\gamma(G)\leq\min_z\widehat{\mathrm{ISC}}^P(z)$ always,
-which orders the two panels.
+Broad simulation matrix at the widest displayed half-width. The series are
+validity rules, not grid widths; the latter are tabulated by correlation in the
+main article. Reading downwards at correlation 0.8 the order is kNN, locally
+scaled, split conformal, and oracle, so the oracle rule is the most
+conservative and matches the bottom row of Table 1 in the main article. The
+conditional-density rule is omitted from the panels because it is numerically
+identical to split conformal in this homoskedastic Gaussian design. Panel (b)
+reports the mean rather than the minimum of the pointwise coverage, so the two
+panels are ordered by
+$\widehat\gamma(G)\leq\min_z\widehat{\mathrm{ISC}}^P(z)\leq
+\overline{\widehat{\mathrm{ISC}}^P}$. Points summarize 100 repetitions for
+each declared combination, pooled across the six prediction-model classes;
+error bars are twice the Monte-Carlo standard error.
 :::
 
 The relaxation path makes the validity--fidelity trade-off explicit and keeps
@@ -269,7 +288,7 @@ reported sample sizes.
 approximation. Bars are twice the Monte-Carlo standard error; the dashed line
 has slope $-1/2$.](../results/s22-rcpd-rate.png){#fig-s-rcpd-rate width="78%"}
 
-## Validity learning under nonlinear support
+## Validity learning under nonlinear support {#sec-supplement-nonlinear}
 
 The nonlinear-manifold experiment isolates validity-model misspecification. A
 local kNN score improves the support diagnostics relative to the linear rule,
