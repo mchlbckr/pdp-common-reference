@@ -30,6 +30,8 @@ execute:
 ```{r}
 #| include: false
 s22 <- targets::tar_read(s22_summary, store = "../_targets")
+s40 <- targets::tar_read(s40_summary, store = "../_targets")
+s40_california <- targets::tar_read(s40_california_summary, store = "../_targets")
 s26 <- targets::tar_read(s26_summary, store = "../_targets")
 s31 <- targets::tar_read(s31_summary, store = "../_targets")
 lipschitz_wine <- targets::tar_read(s30_summary, store = "../_targets")
@@ -550,6 +552,85 @@ corresponding centered ordinary-PD amplitude.
 ```{=latex}
 \clearpage
 ```
+
+## Choice of divergence
+
+The relaxed reference is defined by a Kullback--Leibler projection. This
+section reports what a different divergence would change, holding the
+constraint system, the grid, and the tolerance fixed.
+
+One relation is algebraic and fixes the ceiling. With uniform base weights the
+Pearson divergence from $P$ is $n\sum_iw_i^2-1$ and the effective sample size
+is $1/\sum_iw_i^2$, so minimising the former is exactly maximising the latter.
+The $\chi^2$ projection onto the query-validity constraints is therefore the
+effective-sample-size-optimal feasible reference, and no divergence can do
+better on that endpoint. It is also the analogue, for this constraint system,
+of minimal-dispersion approximately balancing weights [@wang2020]. Comparing
+against it thus answers whether the weight concentration reported throughout
+is caused by the divergence or by the constraints.
+
+```{r}
+#| label: tbl-s-divergence
+#| tbl-cap: "Divergence comparison at matched tolerance. Effective fraction is the effective sample size divided by the number of evaluation contexts; support fraction is the share of contexts receiving positive weight. Simulation entries are medians over 200 repetitions per design; California entries are medians over 10 splits."
+#| tbl-pos: H
+#| results: asis
+divergence_rows <- function(frame, label_columns, labels) {
+  data.frame(
+    Design = labels,
+    Divergence = frame$divergence,
+    `Effective fraction` = sprintf("%.4f", frame$median_ess_fraction),
+    `Maximum weight` = sprintf("%.1f", frame$median_max_weight),
+    `Support fraction` = sprintf("%.3f", frame$median_support_fraction),
+    check.names = FALSE, stringsAsFactors = FALSE
+  )
+}
+simulation_part <- s40$summary[s40$summary$sigma == 0.45, ]
+california_part <- s40_california$summary[
+  s40_california$summary$learner == "Locally scaled residual",
+]
+divergence_table <- rbind(
+  divergence_rows(
+    simulation_part, NULL,
+    sprintf("Simulation, $\\epsilon=%.2f$", simulation_part$epsilon)
+  ),
+  divergence_rows(
+    california_part, NULL,
+    sprintf("California, $\\epsilon=%.2f$", california_part$epsilon)
+  )
+)
+knitr::kable(divergence_table, format = "latex", booktabs = TRUE,
+             escape = FALSE, align = c("l", "l", "r", "r", "r"),
+             row.names = FALSE)
+```
+
+The paired contrasts make the size of the gap explicit. Across the eight
+simulation designs the median ratio of $\chi^2$ to KL effective sample size
+ranges from
+`r fmt(min(s40$contrasts$median_ess_ratio), 3)` to
+`r fmt(max(s40$contrasts$median_ess_ratio), 3)`; on the California matrices it
+ranges from
+`r fmt(min(s40_california$contrasts$median_ess_ratio), 3)` to
+`r fmt(max(s40_california$contrasts$median_ess_ratio), 3)`. Mean normalized
+shape error and mean off-support sensitivity differ by at most
+`r fmt(max(abs(s40$contrasts$mean_shape_error_difference)), 4)` and
+`r fmt(max(abs(s40$contrasts$mean_sensitivity_difference)), 4)` respectively,
+in both cases marginally favouring $\chi^2$.
+
+Three conclusions follow. The concentration reported in the application is a
+consequence of the constraint system rather than of the divergence: the
+effective fraction at the application's operating point moves from
+`r fmt(s40_california$summary$median_ess_fraction[s40_california$summary$learner == "Locally scaled residual" & s40_california$summary$epsilon == 0.15 & s40_california$summary$divergence == "KL"], 3)`
+under KL to
+`r fmt(s40_california$summary$median_ess_fraction[s40_california$summary$learner == "Locally scaled residual" & s40_california$summary$epsilon == 0.15 & s40_california$summary$divergence == "Chi-squared"], 3)`
+under the optimal choice. A relaxed common reference on these data is expensive
+because simultaneous query validity is demanding, and no reweighting scheme can
+avoid that. Second, the two projections agree on the curve: the estimand is
+insensitive to this modelling decision within the range examined. Third, the
+$\chi^2$ solution buys its small advantage by assigning exactly zero weight to
+a substantial share of contexts, while the exponential tilt keeps every context
+positive. We retain KL because a reference population that silently drops more
+than a third of its contexts is harder to report and defend than one that
+downweights them.
 
 ## Technical results and proofs
 

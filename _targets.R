@@ -42,6 +42,7 @@ source(file.path("simulations", "s31_projection_generalization.R"))
 source(file.path("simulations", "s32_bank_offsupport_stress.R"))
 source(file.path("simulations", "s33_california_longitude_application.R"))
 source(file.path("simulations", "s34_conditional_subgroup_comparison.R"))
+source(file.path("simulations", "s40_divergence_comparison.R"))
 
 list(
   tar_target(
@@ -435,5 +436,21 @@ list(
     s34_conditional_subgroup_comparison_figure,
     plot_s34(simulation_s34),
     format = "file"
+  ),
+  tar_target(
+    simulation_s40,
+    run_s40()
+  ),
+  tar_target(
+    s40_summary,
+    summarize_s40(simulation_s40)
+  ),
+  tar_target(
+    simulation_s40_california,
+    run_s40_california()
+  ),
+  tar_target(
+    s40_california_summary,
+    summarize_s40_california(simulation_s40_california)
   )
 )

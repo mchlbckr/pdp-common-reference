@@ -1400,3 +1400,105 @@ estimate_cspd_inference <- function(reference_data, feature, grid, is_valid, pre
     gamma = gamma, n_common = n_common, stringsAsFactors = FALSE
   )
 }
+
+#' Euclidean projection of a vector onto the probability simplex.
+#'
+#' Implements the standard sort-based algorithm: the projection has the form
+#' `max(0, v + mu)` with `mu` chosen so that the entries sum to one.
+project_simplex <- function(v) {
+  if (!is.numeric(v) || length(v) == 0L || anyNA(v)) {
+    stop("v must be a non-empty numeric vector without missing values.", call. = FALSE)
+  }
+  n <- length(v)
+  if (n == 1L) {
+    return(1)
+  }
+  sorted <- sort(v, decreasing = TRUE)
+  cumulative <- cumsum(sorted) - 1
+  candidates <- sorted - cumulative / seq_len(n)
+  rho <- max(which(candidates > 0))
+  mu <- -cumulative[[rho]] / rho
+  pmax(v + mu, 0)
+}
+
+#' Fit a minimum-dispersion (chi-squared) common reference.
+#'
+#' Solves `min 0.5 * sum(w^2)` subject to `w` in the probability simplex and
+#' `t(h) %*% w >= 1 - epsilon` columnwise. Minimising the Pearson divergence
+#' from the uniform reference is algebraically identical to maximising the
+#' effective sample size `1 / sum(w^2)`, so this is also the ESS-optimal
+#' feasible reference. It is the analogue, for the query-validity constraint
+#' system, of minimal-dispersion approximately balancing weights.
+#'
+#' The dual is maximised over the non-negative multipliers; for fixed
+#' multipliers the inner minimiser is the simplex projection of `h %*% lambda`,
+#' and the dual gradient is the constraint residual.
+fit_quadratic_reference <- function(validity, epsilon = 0.1, tolerance = 1e-7,
+                                    max_multiplier = 50, max_iterations = 5000L) {
+  if (!is.matrix(validity) || !is.logical(validity) || nrow(validity) == 0L ||
+      ncol(validity) == 0L || anyNA(validity)) {
+    stop("validity must be a non-empty logical matrix without missing values.", call. = FALSE)
+  }
+  if (!is.numeric(epsilon) || length(epsilon) != 1L || !is.finite(epsilon) ||
+      epsilon < 0 || epsilon >= 1) {
+    stop("epsilon must lie in [0, 1).", call. = FALSE)
+  }
+  n <- nrow(validity)
+  k <- ncol(validity)
+  h <- unclass(validity) * 1
+  epsilon_min <- minimum_relaxation_epsilon(validity)
+  if (epsilon + tolerance < epsilon_min) {
+    stop(sprintf(
+      "epsilon = %.6g is infeasible for the observed validity patterns; use epsilon >= %.6g.",
+      epsilon, epsilon_min
+    ), call. = FALSE)
+  }
+  target <- 1 - epsilon
+
+  primal_weights <- function(lambda) project_simplex(as.numeric(h %*% lambda))
+  objective <- function(lambda) {
+    w <- primal_weights(lambda)
+    # negative dual, for minimisation
+    -(0.5 * sum(w^2) - as.numeric(crossprod(lambda, crossprod(h, w) - target)))
+  }
+  gradient <- function(lambda) {
+    # gradient of the negative dual: the constraint residual
+    w <- primal_weights(lambda)
+    as.numeric(crossprod(h, w)) - target
+  }
+  fit <- stats::optim(
+    par = rep(0, k), fn = objective, gr = gradient, method = "L-BFGS-B",
+    lower = rep(0, k), upper = rep(max_multiplier, k),
+    control = list(maxit = max_iterations, factr = 1e1, pgtol = 1e-10)
+  )
+
+  weights <- primal_weights(fit$par)
+  weights <- weights / sum(weights)
+  coverage <- as.numeric(crossprod(weights, h))
+  max_violation <- max(0, target - min(coverage))
+  positive <- weights > 0
+  empirical_kl <- sum(weights[positive] * log(weights[positive] * n))
+  effective_sample_size <- 1 / sum(weights^2)
+  chi_squared <- n * sum(weights^2) - 1
+  binding <- abs(coverage - target) <= sqrt(tolerance)
+  diagnostics <- validity_pattern_diagnostics(
+    validity, weights = weights, multipliers = fit$par, tolerance = tolerance
+  )
+  validity_diagnostics <- reference_validity_diagnostics(validity, weights)
+
+  structure(list(
+    weights = weights, coverage = coverage, epsilon = epsilon,
+    multipliers = fit$par, kl = empirical_kl, chi_squared = chi_squared,
+    effective_sample_size = effective_sample_size,
+    support_fraction = mean(positive),
+    max_violation = max_violation, convergence = fit$convergence,
+    feasible = max_violation <= sqrt(tolerance),
+    epsilon_min = epsilon_min, binding_constraints = sum(binding),
+    min_coverage = validity_diagnostics$min_coverage,
+    mean_coverage = validity_diagnostics$mean_coverage,
+    simultaneous_valid_mass = validity_diagnostics$simultaneous_valid_mass,
+    strict_complementarity = NA,
+    divergence = "chi_squared",
+    pattern_diagnostics = diagnostics
+  ), class = "relaxed_reference")
+}

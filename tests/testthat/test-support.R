@@ -433,3 +433,56 @@ testthat::test_that("RCPD reports pattern and weight-prediction diagnostics", {
   testthat::expect_gte(unique(estimate$binding_constraints), 0)
   testthat::expect_equal(unique(estimate$epsilon_min), 0)
 })
+
+testthat::test_that("simplex projection returns a probability vector", {
+  set.seed(11)
+  for (v in list(c(0, 0, 0), c(-5, 1, 2), stats::rnorm(50), c(10, -10))) {
+    w <- project_simplex(v)
+    testthat::expect_equal(sum(w), 1, tolerance = 1e-10)
+    testthat::expect_true(all(w >= -1e-12))
+  }
+  # projection of a point already in the simplex is the identity
+  p <- c(0.2, 0.5, 0.3)
+  testthat::expect_equal(project_simplex(p), p, tolerance = 1e-10)
+})
+
+testthat::test_that("quadratic reference satisfies the validity constraints", {
+  validity <- matrix(
+    c(TRUE,  TRUE,  FALSE,
+      TRUE,  FALSE, TRUE,
+      FALSE, TRUE,  TRUE,
+      TRUE,  TRUE,  TRUE),
+    nrow = 4, byrow = TRUE
+  )
+  fit <- fit_quadratic_reference(validity, epsilon = 0.3)
+
+  testthat::expect_s3_class(fit, "relaxed_reference")
+  testthat::expect_equal(sum(fit$weights), 1, tolerance = 1e-9)
+  testthat::expect_true(all(fit$weights >= -1e-10))
+  testthat::expect_true(all(fit$coverage >= 0.7 - 1e-6))
+  testthat::expect_true(fit$feasible)
+})
+
+testthat::test_that("quadratic projection attains at least the KL effective sample size", {
+  set.seed(29)
+  n <- 400L
+  k <- 6L
+  validity <- matrix(stats::runif(n * k) > 0.25, nrow = n, ncol = k)
+  epsilon <- 0.2
+
+  kl_fit <- fit_relaxed_reference(validity, epsilon = epsilon)
+  q_fit <- fit_quadratic_reference(validity, epsilon = epsilon)
+
+  # Both solutions must meet the constraints up to solver tolerance. The
+  # `feasible` flag of the KL fit is not used here: its default optimiser
+  # tolerance leaves a residual of order 1e-7, which trips the flag although
+  # the solution is correct.
+  testthat::expect_true(all(kl_fit$coverage >= 1 - epsilon - 1e-6))
+  testthat::expect_true(all(q_fit$coverage >= 1 - epsilon - 1e-6))
+  # chi-squared minimisation is exactly effective-sample-size maximisation,
+  # so the quadratic solution can never have the smaller value.
+  testthat::expect_gte(
+    q_fit$effective_sample_size,
+    kl_fit$effective_sample_size - 1e-6
+  )
+})

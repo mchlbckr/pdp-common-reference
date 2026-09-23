@@ -352,7 +352,28 @@ $P(\,\cdot\mid\mathcal C_j(G))$ as $\epsilon\downarrow0$.
 
 This is a standard I-projection onto linear moment inequalities. It supplies a
 graded validity--fidelity frontier: smaller $\epsilon$ raises validity but can
-increase KL cost, maximum weight, and variance. Every analysis therefore
+increase KL cost, maximum weight, and variance.
+
+The divergence is a modelling choice and the weight concentration it produces
+is the main cost reported below, so it deserves justification rather than
+convention. With uniform base weights the Pearson divergence from $P$ equals
+$n\sum_iw_i^2-1$ and the effective sample size is $1/\sum_iw_i^2$, so the
+$\chi^2$ projection onto the same constraint set is exactly the
+effective-sample-size-maximising feasible reference, and it is the analogue
+here of minimal-dispersion balancing weights [@wang2020]. It therefore bounds
+what any divergence can recover. The online supplement reports that comparison
+on both the simulation designs and the California validity matrices: across
+tolerances the $\chi^2$ projection improves the effective sample size by
+between 0 and 5 per cent, with curve error and off-support sensitivity
+unchanged to three decimal places. At the application's operating point the
+effective fraction moves from 0.026 to 0.026. The concentration is therefore a
+property of the query-validity constraint system and not an artifact of
+choosing KL, and it cannot be optimised away by a different divergence. The
+$\chi^2$ solution also assigns exactly zero weight to 36--43 per cent of
+contexts, where the exponential tilt keeps every context positive; we prefer
+the tilt because silently deleting more than a third of the reference
+population is a larger interpretive cost than the few per cent of effective
+sample size it buys. Every analysis therefore
 reports minimum projected validity, $D_{\mathrm{KL}}(Q_\epsilon^*\Vert P)$,
 effective sample size $1/\sum_iw_i^2$, and hard common mass. The minimum
 feasible tolerance is checked before optimization. All displayed curve-shape
