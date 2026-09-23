@@ -553,6 +553,46 @@ corresponding centered ordinary-PD amplitude.
 \clearpage
 ```
 
+## Conditional-subgroup comparator
+
+The conditional-subgroup comparison in @fig-s-conditional-subgroup clarifies why
+cs-PDP and RCPD should not be ranked as interchangeable estimators. The CART
+partition produces four context populations and therefore four curves. Within
+each subgroup's central focal-feature range (thick segments), the curves expose
+the common additive response shape with different subgroup compositions.
+Outside those ranges the thin segments again require extrapolative queries; for
+the two extreme groups, their central ranges do not intersect the declared
+global intervention interval. RCPD answers a different question: it seeks one
+global population that can be used at every displayed $z$.
+
+::: {#fig-s-conditional-subgroup layout-ncol=2 fig-pos="H"}
+![CART partition of the context space.](../results/s34-conditional-subgroup-comparison-a.png){#fig-cs-partition}
+
+![Subgroup-specific PDPs; thick segments mark each subgroup's central 50% focal-feature range and the dashed line is the additive target.](../results/s34-conditional-subgroup-comparison-b.png){#fig-cs-curves}
+
+Conditional-subgroup-style comparison in the additive composition design.
+The comparator intentionally returns several local curves rather than one
+global effect.
+:::
+
+## Operational workflow
+
+The main article states the estimation protocol; this is its operational form.
+
+1. Predeclare $G$, the score, $\alpha$, candidate tolerances, and diagnostics.
+2. Fit $f$ and the validity rule on designated training and calibration data.
+3. On projection contexts, form the $m\times K$ validity matrix, check
+   feasibility, and fit candidate exponential tilts.
+4. On an independent audit split, certify or reject each frozen candidate;
+   abstain if none passes.
+5. Estimate the selected fixed-reference curve on evaluation contexts and
+   report minimum validity, hard common mass, KL, maximum normalized weight,
+   and effective sample size with the curve.
+
+Forming the validity matrix costs $O(mK)$ score evaluations. Optimization is
+over $K$ dual multipliers, or equivalently over at most $2^K$ observed
+validity-pattern cells; in practice only the observed cells are retained.
+
 ## Choice of divergence
 
 The relaxed reference is defined by a Kullback--Leibler projection. This
@@ -571,7 +611,7 @@ is caused by the divergence or by the constraints.
 
 ```{r}
 #| label: tbl-s-divergence
-#| tbl-cap: "Divergence comparison at matched tolerance. Effective fraction is the effective sample size divided by the number of evaluation contexts; support fraction is the share of contexts receiving positive weight. Simulation entries are medians over 200 repetitions per design; California entries are medians over 10 splits."
+#| tbl-cap: "Divergence comparison at matched tolerance. Effective fraction is the effective sample size divided by the number of evaluation contexts; support fraction is the share of contexts receiving positive weight. Simulation entries are medians over 200 repetitions per design at $\\sigma=0.45$; California entries are medians over 10 splits at $\\epsilon=0.15$ under both declared validity rules."
 #| tbl-pos: H
 #| results: asis
 divergence_rows <- function(frame, label_columns, labels) {
@@ -586,7 +626,7 @@ divergence_rows <- function(frame, label_columns, labels) {
 }
 simulation_part <- s40$summary[s40$summary$sigma == 0.45, ]
 california_part <- s40_california$summary[
-  s40_california$summary$learner == "Locally scaled residual",
+  s40_california$summary$epsilon == 0.15,
 ]
 divergence_table <- rbind(
   divergence_rows(
@@ -595,7 +635,8 @@ divergence_table <- rbind(
   ),
   divergence_rows(
     california_part, NULL,
-    sprintf("California, $\\epsilon=%.2f$", california_part$epsilon)
+    ifelse(california_part$learner == "Locally scaled residual",
+           "California, scaled residual", "California, density")
   )
 )
 knitr::kable(divergence_table, format = "latex", booktabs = TRUE,

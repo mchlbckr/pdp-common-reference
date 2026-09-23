@@ -1,6 +1,6 @@
 ---
-title: "Partial Dependence Beyond the Data: Support Diagnostics and Common-Reference Feature Effects"
-short-title: "Partial Dependence Beyond the Data"
+title: "Keeping One Reference Population: Feasibility and Diagnostics for Feature-Effect Curves"
+short-title: "Keeping One Reference Population"
 short-author: "Bücker"
 author:
   - name: Michael Bücker
@@ -12,27 +12,32 @@ author:
       - name: "Hüfferstraße 27"
       - name: "D-48149 Münster"
 abstract: |
-  Partial-dependence plots can query a fitted model at feature combinations
-  poorly represented by the data. We treat this as an estimand-design problem.
-  Interventional support coverage audits the induced queries and yields sharp
-  bounds for ordinary partial dependence under declared restrictions.
-  Pointwise trimming removes rejected queries but changes the context
-  population across the curve. We instead define hard and relaxed
-  common-reference curves that retain one context population at every displayed
-  value. The relaxed curve is the Kullback--Leibler projection of the observed
-  context distribution subject to minimum query-validity constraints. An
-  independent audit split gives a simultaneous finite-sample certificate for a
-  predeclared finite family of projected references, with abstention when none
-  can be certified. Simulations isolate composition effects and the
-  validity--fidelity trade-off. In a 30-split California Housing application,
-  support restriction reverses a near-zero random-forest Longitude contrast and
-  attenuates the boosting contrast on an effective subpopulation of three to
-  six per cent of blocks, with the attenuation depending on the declared
-  validity rule by a factor of two. A controlled Bank Marketing stress test
-  shows that ordinary partial dependence can change under modifications
-  confined to rejected queries. Curves supported entirely on accepted queries
-  are invariant under that perturbation; the relaxed curve, which retains mass
-  outside the common valid set, is not.
+  Reading a feature-effect curve presumes three things at once: a displayed
+  range chosen by the analyst, one reference population held fixed across it,
+  and model queries the data can support. We show that these requirements are
+  jointly restrictive. A fixed reference is valid across a displayed range if
+  and only if it is supported on the intersection of the pointwise valid
+  context sets, so the intersection mass determines whether any such curve
+  exists; pointwise admissibility does not imply simultaneous admissibility.
+  We then measure the shortfall rather than assume it away. Interventional
+  support coverage audits the queries an ordinary partial-dependence plot
+  induces, and a support-localized envelope bounds what the unsupported share
+  can do to the curve. Relaxing the requirement to a Kullback--Leibler
+  projection under minimum query-validity constraints restores feasibility, and
+  we quantify its price: on California Housing the intersection carries 1.3 to
+  2.8 per cent of blocks, the relaxed reference retains an effective 2.6 to 5.5
+  per cent, and no divergence improves that, since the effective-sample-size
+  optimal projection gains at most five per cent while discarding a third of
+  the contexts. A finite-sample certificate for the relaxed reference abstains
+  at the sample size this application provides. A controlled stress test
+  completes the picture: curves supported entirely on accepted queries are
+  invariant to modifications confined to rejected ones, while the relaxed curve
+  retains 39 per cent of the perturbation. Across four applications the
+  intersection mass ranges from 1.3 to 73 per cent, so the contract can fail by
+  a wide margin or essentially hold; which of the two occurs is a measurable
+  property of the dependence structure and the displayed range rather than
+  something to be assumed either way, and we give the diagnostics that decide
+  it.
 keywords:
   - partial dependence
   - extrapolation
@@ -63,6 +68,8 @@ projection_audit <- targets::tar_read(s31_summary, store = "../_targets")
 bank_stress <- targets::tar_read(s32_summary, store = "../_targets")
 california_results <- targets::tar_read(s33_summary, store = "../_targets")
 california_audit <- targets::tar_read(s33_audit, store = "../_targets")
+wine_case <- targets::tar_read(case_study_s16, store = "../_targets")
+mixed_cases <- targets::tar_read(case_studies_s17, store = "../_targets")
 
 fmt <- function(x, digits = 3L) formatC(x, format = "f", digits = digits)
 s29_value <- function(method, variable) {
@@ -122,34 +129,49 @@ s24_value <- function(reference, variable) {
 ## Introduction {#sec-introduction}
 
 Partial dependence (PD) averages a fitted prediction function after replacing a
-focal feature by a value $z$ [@friedman2001]. With dependent predictors, this
-operation can evaluate the model at rare or absent feature combinations
-[@apley2020; @hooker2021]. The usual warning that PD may extrapolate leaves two
-questions unresolved: how much of each induced query distribution is accepted
-by a declared support rule, and which population is represented after invalid
-queries are removed.
+focal feature by a value $z$ [@friedman2001]. Reading the resulting curve as a
+statement about the model involves an implicit contract with three clauses. The
+analyst picks the displayed range. The same population of contexts is averaged
+over at every point of it, since otherwise a change in the curve cannot be
+attributed to the model rather than to a change in who is being averaged. And
+the model is queried where data constrain it, since otherwise the curve reports
+an extrapolation. Each clause is reasonable on its own.
 
-These questions matter because the obvious remedy, pointwise trimming, changes
-the context population with $z$. The resulting curve can mix changes in model
-response with changes in who remains in the average. ALE avoids global feature
-replacement by accumulating local differences [@apley2020], while subgroup and
-regional methods deliberately construct local populations
-[@herbinger2022; @molnar2024]. They answer useful but different questions. We
-consider settings in which a global model-query contrast must use one unchanged
-reference population across a declared intervention range.
+This paper is about the fact that they are jointly restrictive. With dependent
+predictors the contract usually cannot be honoured, and the obstruction is not
+a defect of any estimator. A fixed reference population is valid across a
+displayed range if and only if it is supported on the intersection of the
+context sets that are valid at each grid point, so the mass of that
+intersection decides whether a curve satisfying all three clauses exists at
+all. The mass can be zero while every single grid point is individually
+unproblematic: pointwise admissibility does not imply simultaneous
+admissibility, and @sec-feasibility gives a construction in which it fails
+completely.
 
-Our contribution is a common-reference formulation of that problem. First,
-interventional support coverage (ISC) audits ordinary-PD queries and connects
-rejected mass to sharp robustness envelopes over admissible extensions. Second, hard
-common-support PD and a relaxed common-reference PD (RCPD) separate response
-shape from changing composition. RCPD is the classical KL information
-projection [@csiszar1975; @csiszar2003] under one validity constraint per grid
-point; the contribution is the estimand and constraint formulation, not a new
-convex optimizer. Third, an independent audit split converts a predeclared
-finite family of fitted tilts into a simultaneous finite-sample validity
-certificate with explicit abstention. The concentration tool is standard; its
-use here closes the gap between same-sample projection constraints and
-population query validity.
+Since the requirement usually cannot be met exactly, the useful question is how
+far from it a given display is, and what buying feasibility costs. We therefore
+proceed in three steps. First we measure the shortfall: interventional support
+coverage audits the queries an ordinary PD plot induces, and a
+support-localized envelope bounds what the rejected share can do to the curve.
+Second we relax the requirement, replacing exact common validity with a
+Kullback--Leibler projection of the context distribution under one minimum
+validity constraint per grid point, and we certify that relaxation on an
+independent audit split with explicit abstention. Third we price it. On
+California Housing the intersection carries 1.3 to 2.8 per cent of blocks; the
+relaxed reference retains an effective 2.6 to 5.5 per cent; the
+effective-sample-size optimal projection improves that by at most five per cent
+and only by discarding a third of the contexts outright; the certificate
+abstains at the sample size the application provides; and the relaxed curve
+still transmits 39 per cent of a perturbation confined to rejected queries,
+where the exactly supported curves transmit none.
+
+None of the components is new in isolation, and we do not claim otherwise. The
+projection is classical [@csiszar1975; @csiszar2003; @bhattacharya1995], the
+concentration tool is standard [@maurer2009empirical], and replacing the PD
+averaging measure to avoid extrapolation goes back at least to @hooker2007. The
+contribution is the feasibility statement that organizes them, the diagnostics
+that make the shortfall measurable, and the finding that the shortfall is
+structural rather than an artifact of any of these choices.
 
 This scope is narrower than a general correction of PD. A validity rule is a
 declared operational notion of query compatibility, not causal overlap or a
@@ -161,16 +183,193 @@ must be reported with their information distortion and effective sample size.
 The empirical study therefore asks when that declared population change alters
 the fitted interpretation and when it merely records a support warning.
 
+## Setup and the feasibility of a common reference {#sec-feasibility}
+
+Let $X=(X_j,X_{-j})$, let $P=P_{X_{-j}}$ be the original context distribution,
+and let $f$ be a fitted prediction function. Ordinary PD is
+$$\operatorname{PD}_j(z)=\mathbb E_P[f(z,X_{-j})].$$ {#eq-pd}
+Let $s_j(z,u)$ be a prespecified validity score, with accepted queries
+$\mathcal V=\{(z,u):s_j(z,u)\leq t\}$. The score, threshold, feature scaling,
+and intervention range are part of the estimand. Conditional residual or
+density scores ask whether $z$ is compatible with a context $u$; joint scores
+also react to marginally rare contexts.
+
+The three clauses of the reading contract can now be stated precisely. Write a
+feature-effect curve in the form $T_R(z)=\mathbb E_{U\sim R}[f(z,U)]$ for a
+reference distribution $R$ and a displayed grid $G$.
+
+* **Comparability.** $R$ does not vary with $z$.
+* **Support validity.** $R\{u:(z,u)\in\mathcal V\}=1$ for every $z\in G$.
+* **Globality.** $G$ is the range the analyst declared, not one shrunk until
+  the first two clauses happen to hold.
+
+For a finite grid $G$, define the contexts valid everywhere and their mass by
+$$
+\mathcal C_j(G)=\bigcap_{z\in G}\{u:(z,u)\in\mathcal V\},
+\qquad \gamma_j(G)=P\{\mathcal C_j(G)\}.
+$$ {#eq-common-set}
+When $\gamma_j(G)>0$, hard common-support PD is
+$$
+\operatorname{CSPD}_j(z;G)=
+\mathbb E_P[f(z,X_{-j})\mid X_{-j}\in\mathcal C_j(G)].
+$$ {#eq-cspd}
+It uses one fully accepted population over the entire grid but can be unstable
+when $\gamma_j(G)$ is small. Pointwise-trimmed PD instead conditions on
+$\{u:(z,u)\in\mathcal V\}$ separately at every $z$; it is a moving-reference
+curve and is reported as such.
+
+The feasibility question has a one-line answer, which is what makes it useful
+rather than deep.
+
+```{=latex}
+\begin{proposition}[Feasibility of a common valid reference]
+\label{prop-feasibility}
+```
+Let $G$ be finite. A reference $R$ satisfies comparability and support validity
+on $G$ if and only if $R\{\mathcal C_j(G)\}=1$. Consequently such a reference
+exists if and only if $\mathcal C_j(G)\neq\emptyset$, and one that is
+absolutely continuous with respect to $P$ exists if and only if
+$\gamma_j(G)>0$, in which case $P(\,\cdot\mid\mathcal C_j(G))$ is the unique
+$P$-closest such reference in Kullback--Leibler divergence and CSPD is the
+curve it induces.
+```{=latex}
+\end{proposition}
+```
+
+The proof is immediate: support validity at $z$ requires
+$R\{\mathcal V_z\}=1$, and requiring it simultaneously for all $z\in G$
+requires $R$ to put all its mass in the intersection, a finite intersection of
+probability-one events. For an uncountable displayed range the same conclusion
+needs additional structure on $\mathcal V$; the online supplement gives it for
+interval-valued rules, where the constraint set reduces exactly to a finite
+one. We state it because it
+converts a vague worry about extrapolation into a measurable quantity. Whether
+the contract can be honoured is decided by $\gamma_j(G)$, and $\gamma_j(G)$
+is estimable from data without reference to any particular estimator or to the
+fitted model.
+
+A three-context example fixes the quantities before the machinery arrives. Let
+$P$ be uniform on contexts $\{u_1,u_2,u_3\}$ and let the grid be
+$G=\{z_1,z_2\}$, with the validity rule accepting
+$(z_1,u_1),(z_1,u_2),(z_2,u_2)$ and $(z_2,u_3)$. Each grid point then has
+support coverage $\operatorname{ISC}^P(z_1)=\operatorname{ISC}^P(z_2)=2/3$,
+so a pointwise audit reports the same mild shortfall twice. The intersection,
+however, is $\mathcal C=\{u_2\}$ with $\gamma=1/3$: the only curve obeying
+the contract averages over a single context, and its value at $z_1$ and $z_2$
+is $f(z_1,u_2)$ and $f(z_2,u_2)$, an $n=1$ summary of a population of three.
+Pointwise trimming instead averages over $\{u_1,u_2\}$ at $z_1$ and
+$\{u_2,u_3\}$ at $z_2$, so its two displayed values describe different
+populations and their difference confounds the model response with that change.
+Relaxing to a tolerance $\epsilon$ interpolates: the constraints
+$w_1+w_2\geq1-\epsilon$ and $w_2+w_3\geq1-\epsilon$ force
+$w_2\geq1-2\epsilon$, so at $\epsilon=0.2$ the reference must place at least
+$0.6$ on the single commonly valid context and the effective sample size falls
+to $2.3$ of $3$. Every mechanism the rest of the paper measures on real data is
+visible here: the gap between pointwise and simultaneous validity, the
+degeneracy of the exact solution, the moving population of the trimmed
+alternative, and the concentration that relaxation trades against validity.
+
+### Pointwise admissibility does not imply simultaneous admissibility
+
+The intersection can be empty although no individual grid point looks
+problematic, so $\gamma_j(G)$ cannot be inferred from pointwise diagnostics.
+The construction in @fig-rotating-invalidity separates the two. There are eight
+context groups and eight grid points, and a member of group $g$ is invalid only
+at $z=g$. Every grid point therefore accepts seven eighths of the contexts,
+which by any pointwise standard is unremarkable, while no context survives all
+eight points and $\gamma_j(G)=0$ exactly. No curve satisfying comparability and
+support validity exists on this grid, and no estimator can produce one.
+
+::: {#fig-rotating-invalidity layout-ncol=2 fig-pos="H"}
+![Observed mass of the eight context groups; the dashed line is $\epsilon$.](../results/s24-constraint-comparison-b.png){#fig-rotating-mass}
+
+![Mean, minimum, and simultaneous validity under competing reference rules.](../results/s24-constraint-comparison-c.png){#fig-rotating-coverage}
+
+Rotating invalidity separates pointwise from simultaneous admissibility: each
+grid point accepts seven eighths of the contexts, yet no context is accepted
+everywhere. @sec-relaxation returns to this construction to show what
+relaxation recovers from it.
+:::
+
+Whether real data behave like this is not a matter of opinion, and it varies
+enormously. Across the four applications of @sec-experiments the intersection
+mass ranges from 1.3 per cent to 73 per cent (@tbl-gamma-applications): in one
+of them the contract fails so badly that no useful curve obeys it, and in
+another it essentially holds, so that hard CSPD is a perfectly serviceable
+display and none of the relaxation machinery below is needed. The two are not
+different in degree only.
+
+What separates them is how strongly the focal predictor is coupled to the
+context, together with how wide a range is displayed. The experiment matrix of
+@sec-experiments varies both deliberately: at correlation 0.2 the intersection
+carries essentially the whole population at every grid width, while at
+correlation 0.8 it falls to 0.68, 0.42, and 0.10 as the displayed half-width
+grows from 0.40 to 1.10. The contract is therefore a checkable property of the
+dependence structure and the declared range, not a condition to be assumed
+either way, and $\gamma_j(G)$ is what checks it.
+
+```{r}
+#| label: tbl-gamma-applications
+#| tbl-cap: "Intersection mass and support coverage in the four applications, at the grid and validity rule each one declares. California entries are medians over 30 splits under the two rules; the others are single held-out evaluations. The contract of Proposition 1 is satisfiable in Bank Marketing and unusable in California."
+#| tbl-pos: H
+#| results: asis
+application_row <- function(label, gamma, min_isc, mean_isc, n) {
+  data.frame(
+    Application = label,
+    `$\\gamma_j(G)$` = fmt(gamma, 3),
+    `Minimum ISC` = fmt(min_isc, 3),
+    `Mean ISC` = fmt(mean_isc, 3),
+    `Contexts` = format(n, big.mark = ","),
+    check.names = FALSE, stringsAsFactors = FALSE
+  )
+}
+bank <- mixed_cases[[1L]]
+shoppers <- mixed_cases[[2L]]
+gamma_table <- rbind(
+  application_row(
+    "California Housing (density)",
+    s33_value("Random forest", "Conditional Gaussian density", 0.15, "median_gamma"),
+    s33_audit_value("Conditional Gaussian density", "min_isc_median"),
+    s33_audit_value("Conditional Gaussian density", "mean_isc_median"),
+    4128L
+  ),
+  application_row(
+    "California Housing (scaled residual)",
+    s33_value("Random forest", "Locally scaled residual", 0.15, "median_gamma"),
+    s33_audit_value("Locally scaled residual", "min_isc_median"),
+    s33_audit_value("Locally scaled residual", "mean_isc_median"),
+    4128L
+  ),
+  application_row("Wine Quality", wine_case$gamma[[1L]],
+                  min(wine_case$isc), mean(wine_case$isc),
+                  wine_case$n_evaluation[[1L]]),
+  application_row("Online Shoppers", shoppers$gamma[[1L]],
+                  min(shoppers$isc), mean(shoppers$isc),
+                  shoppers$n_evaluation[[1L]]),
+  application_row("Bank Marketing", bank$gamma[[1L]],
+                  min(bank$isc), mean(bank$isc),
+                  bank$n_evaluation[[1L]])
+)
+knitr::kable(gamma_table, format = "latex", booktabs = TRUE, escape = FALSE,
+             align = c("l", "r", "r", "r", "r"), row.names = FALSE)
+```
+ The rest of this paper is
+about the case where the check fails: measure how far the ordinary curve is
+from the contract (@sec-method), relax it in a controlled way
+(@sec-relaxation), and report the price.
+
 ## Relation to conditional effects and balancing weights {#sec-related}
 
-RCPD sits between two mature literatures but has a different target from both.
-Dependence-aware feature-effect methods primarily change the functional being
-displayed. Conditional PD averages under $P(X_{-j}\mid X_j=z)$ and therefore
-lets the context distribution vary with $z$; it describes the fitted model
-through the observed conditional distribution and can mix the focal response
-with effects of correlated features [@apley2020; @molnar2024]. Conditional-
-subgroup PDPs instead report several local curves, one for each interpretable
-partition of the context space [@molnar2024]. ALE accumulates local prediction
+The methods in use can be read as choices about which clause of
+@sec-feasibility to give up, and none of them escapes the trilemma. That
+unrestricted feature replacement forces extrapolation under dependence is
+established [@hooker2021]; ordinary PD gives up support validity. Conditional
+PD averages under $P(X_{-j}\mid X_j=z)$ and therefore gives up comparability:
+the context distribution varies with $z$, so the curve can mix the focal
+response with effects of correlated features [@apley2020; @molnar2024].
+Conditional-subgroup and regional methods give up globality, reporting several
+local curves on interpretable partitions of the context space
+[@herbinger2022; @molnar2024]. ALE accumulates local prediction
 differences rather than averaging one fixed intervention distribution
 [@apley2020], and its differential variant avoids constructing artificial
 points altogether [@gkolemis2023]. These are valuable conditional or local descriptions, but none is
@@ -224,18 +423,10 @@ $G$, and $\epsilon$, but not on the prediction values $f(z,U)$.
 
 : Estimand-level comparison with the closest dependence-aware and weighting approaches. {#tbl-related-work}
 
-## Support-qualified feature effects {#sec-method}
+## Measuring the shortfall {#sec-method}
 
-### Query validity and reference populations
+### Interventional support coverage
 
-Let $X=(X_j,X_{-j})$, let $P=P_{X_{-j}}$ be the original context distribution,
-and let $f$ be a fitted prediction function. Ordinary PD is
-$$\operatorname{PD}_j(z)=\mathbb E_P[f(z,X_{-j})].$$ {#eq-pd}
-Let $s_j(z,u)$ be a prespecified validity score, with accepted queries
-$\mathcal V=\{(z,u):s_j(z,u)\leq t\}$. The score, threshold, feature scaling,
-and intervention range are part of the estimand. Conditional residual or
-density scores ask whether $z$ is compatible with a context $u$; joint scores
-also react to marginally rare contexts.
 
 For any reference distribution $R$, define
 $$
@@ -294,20 +485,8 @@ the displayed queries become supported. Their Remark 1 tightens a constant, but 
 does so for the data-perturbation bound of their Theorem 2; the refinement
 here is the support localization of the model-perturbation bound.
 
-For a finite grid $G$, define the contexts valid everywhere and their mass by
-$$
-\mathcal C_j(G)=\bigcap_{z\in G}\{u:(z,u)\in\mathcal V\},
-\qquad \gamma_j(G)=P\{\mathcal C_j(G)\}.
-$$ {#eq-common-set}
-When $\gamma_j(G)>0$, hard common-support PD is
-$$
-\operatorname{CSPD}_j(z;G)=
-\mathbb E_P[f(z,X_{-j})\mid X_{-j}\in\mathcal C_j(G)].
-$$ {#eq-cspd}
-It uses one fully accepted population over the entire grid but can be unstable
-when $\gamma_j(G)$ is small. Pointwise-trimmed PD instead conditions on
-$\{u:(z,u)\in\mathcal V\}$ separately at every $z$; it is a moving-reference
-curve and is reported as such.
+
+## Relaxation and its price {#sec-relaxation}
 
 ### Relaxed common reference
 
@@ -325,6 +504,36 @@ $$
 \operatorname{RCPD}_{j,\epsilon}(z;G)
 =\mathbb E_{Q_\epsilon^*}[f(z,U)].
 $$ {#eq-rcpd}
+
+The relaxation replaces the intersection event $U\in\mathcal C_j(G)$ of
+Proposition \ref{prop-feasibility} by $K$ marginal inequalities, and that
+substitution is what restores feasibility: a reference can satisfy every
+pointwise constraint although $\gamma_j(G)=0$. The rotating construction of
+@sec-feasibility shows this at its sharpest. There no curve obeying the
+contract exists, yet at $\epsilon=0.13$ the relaxed reference attains minimum
+pointwise coverage
+`r fmt(s24_value("Pointwise constraints", "min_coverage"), 3)` by reweighting
+one context population and using it at all eight points. The constraint system
+has to be pointwise for this to work: an average-only constraint achieves
+nothing there, because the mean validity of $P$ is already
+`r fmt(s24_value("Original P", "mean_coverage"), 3)` while its worst-point
+coverage remains
+`r fmt(s24_value("Average constraint", "min_coverage"), 3)`.
+
+What is recovered is therefore not the original requirement but a graded
+weakening of it, and the weakening is indexed by a quantity the analyst
+declares. This also makes the construction sensitive to a representation
+choice. Feasibility in the rotating example requires $\epsilon\geq1/8$, the
+reciprocal of the number of groups, and in general the admissible tolerance
+depends on $K$, that is, on how finely the displayed range is represented. A
+grid is an analyst's choice, so a construction of this kind can be made
+feasible or infeasible by refining it. The online supplement shows that for
+interval-valued validity rules the constraint set reduces exactly to a finite
+one and the dependence disappears; the rotating construction is deliberately
+not of that form, which is what makes it a clean separating example and at the
+same time the case where the representation matters. Analyses should declare
+the grid before inspecting curves and report the minimum feasible tolerance, as
+done throughout @sec-experiments.
 
 ```{=latex}
 \begin{proposition}[Relaxed common-reference projection]
@@ -380,48 +589,6 @@ feasible tolerance is checked before optimization. All displayed curve-shape
 comparisons use common grid-mean centering,
 $$g^c(z)=g(z)-|G|^{-1}\sum_{v\in G}g(v).$$ {#eq-grid-centering}
 
-### Common reference is not common valid support
-
-The adjective *common* refers to using the same distribution $Q_\epsilon^*$
-at every grid point. It does not imply that its contexts are individually
-valid over the complete grid. CSPD requires the intersection event
-$U\in\mathcal C_j(G)$; RCPD instead imposes the $K$ marginal inequalities
-$Q\{h_k(U)=1\}\geq1-\epsilon$. The latter can be feasible even when
-$\gamma_j(G)=0$.
-
-The rotating-invalidity construction in @fig-rotating-invalidity makes the
-distinction explicit. There are eight context groups and eight grid points; a
-member of group $g$ is invalid only at $z=g$. Consequently no context is valid
-everywhere and the simultaneous-valid mass is zero under every reference.
-Nevertheless, at $\epsilon=0.13$ RCPD attains minimum pointwise coverage
-`r fmt(s24_value("Pointwise constraints", "min_coverage"), 3)` by reweighting
-the same context population once and then using it at all eight points. An
-average-only constraint does nothing here: its mean validity is already
-`r fmt(s24_value("Original P", "mean_coverage"), 3)`, while its worst-point
-coverage remains only
-`r fmt(s24_value("Average constraint", "min_coverage"), 3)`.
-
-::: {#fig-rotating-invalidity layout-ncol=2 fig-pos="H"}
-![Observed mass of the eight context groups; the dashed line is $\epsilon$.](../results/s24-constraint-comparison-b.png){#fig-rotating-mass}
-
-![Mean, minimum, and simultaneous validity under competing reference rules.](../results/s24-constraint-comparison-c.png){#fig-rotating-coverage}
-
-Rotating invalidity: a common RCPD reference can satisfy every pointwise
-coverage constraint although no context is valid across the full grid.
-:::
-
-The example also exposes a dependence that the general formulation carries.
-Feasibility here requires $\epsilon\geq1/8$, the reciprocal of the number of
-groups, and in general the admissible tolerance depends on $K$, that is, on how
-finely the displayed range is represented. A grid is an analyst's choice, so a
-construction of this kind can be made feasible or infeasible by refining it.
-The online supplement shows that for interval-valued validity rules the
-constraint set reduces exactly to a finite one and the dependence disappears.
-The rotating construction is deliberately not of that form, which is what makes
-it a clean separating example and at the same time the case where the
-representation matters. Analyses should therefore declare the grid before
-inspecting curves and report the minimum feasible tolerance, as done throughout
-@sec-experiments.
 
 ### Independent finite-sample certification
 
@@ -497,21 +664,11 @@ hypothetical deterministic population validity rule. Repeating training and
 calibration changes the target itself; the supplement reports this
 validity-target drift separately from evaluation variation.
 
-The operational workflow is:
+The five-step operational workflow, from predeclaring the grid through
+certification to the diagnostics reported with the curve, is set out in the
+online supplement together with its cost: forming the validity matrix takes
+$O(mK)$ score evaluations and the optimization is over $K$ dual multipliers.
 
-1. Predeclare $G$, the score, $\alpha$, candidate tolerances, and diagnostics.
-2. Fit $f$ and the validity rule on designated training and calibration data.
-3. On projection contexts, form the $m\times K$ validity matrix, check
-   feasibility, and fit candidate exponential tilts.
-4. On an independent audit split, certify or reject each frozen candidate;
-   abstain if none passes.
-5. Estimate the selected fixed-reference curve on evaluation contexts and
-   report minimum validity, hard common mass, KL, maximum normalized weight,
-   and effective sample size with the curve.
-
-Forming the validity matrix costs $O(mK)$ score evaluations. Optimization is
-over $K$ dual multipliers, or equivalently over at most $2^K$ observed
-validity-pattern cells; in practice only the observed cells are retained.
 RCPD is useful when the scientific contrast requires one population across the
 displayed range. It is not a default replacement for PD or conditional
 effects. Infeasibility and failed certification force abstention. For weight
@@ -524,30 +681,27 @@ asymptotics, and uncertainty diagnostics are provided in the supplement.
 
 ## Empirical evaluation {#sec-experiments}
 
-We use three complementary designs. First, synthetic experiments isolate
-composition and compare methods against externally specified targets. The main
-composition design draws 300 samples of size 1,000 from
-$U\sim N(0,1)$ and $X=U+N(0,0.45^2)$, uses 21 grid points on
-$[-0.75,0.75]$, and accepts $|z-U|\leq\Phi^{-1}(0.975)0.45$. Two prediction
-surfaces agree on every accepted query but differ outside that set. A second
-interaction design makes the original-population feature effect known and
-compares the support-qualified alternatives. To include a near conditional
-competitor without conflating estimands, a depth-two CART partitions the
-context $U$ to make $X$ more homogeneous and reports one conditional-subgroup
-PDP per terminal node, following the cs-PDP principle of @molnar2024. A broader
-six-model matrix, calibration and grid sensitivity, competing constraint
-semantics, and resampling diagnostics are reported in the supplement.
+Synthetic designs isolate mechanisms; applications establish whether they
+matter. The composition design draws $U\sim N(0,1)$ and $X=U+N(0,0.45^2)$ over
+21 grid points and uses two prediction surfaces that agree on every accepted
+query but differ outside it, which isolates what rejected mass can do. A second
+design makes the original-population effect externally known. A broader
+six-model matrix varying correlation and grid width, calibration and grid
+sensitivity, competing constraint semantics, and resampling diagnostics are in
+the supplement, as are the exact settings of every design.
 
-Second, the California Housing application [@pace1997] uses median house value
-as response and Longitude as focal feature. The held-out, prespecified design
-fixes 30 previously unused training/calibration/evaluation splits, the central
-40th--60th percentile Longitude range, $K=21$, $\alpha=0.10$,
-$\epsilon\in\{0.10,0.15,0.20\}$, two validity learners, and random-forest and
-gradient-boosting predictors. The middle tolerance is the central predeclared
-reporting value. Third, a controlled Bank Marketing stress test
-[@uci_bank_marketing] modifies predictions only at rejected queries to isolate
-the failure mode. Complete settings and all secondary applications are in the
-supplement.
+The applications are the four of @tbl-gamma-applications. California Housing
+[@pace1997] is the confirmatory analysis, with median house value as response,
+Longitude as focal feature, 30 prespecified splits, the central 40th--60th
+percentile range, $K=21$, $\alpha=0.10$, $\epsilon\in\{0.10,0.15,0.20\}$ with
+the middle value as the predeclared report, two validity learners, and
+random-forest and gradient-boosting predictors. Wine Quality, Online Shoppers,
+and Bank Marketing [@uci_wine_quality; @uci_online_shoppers;
+@uci_bank_marketing] are held-out applications reported in the supplement; they
+are included here because their intersection masses span the range over which
+the reading contract goes from unusable to essentially satisfied. Bank
+Marketing additionally carries a controlled stress test that modifies
+predictions only at rejected queries.
 
 ## Results
 
@@ -595,25 +749,11 @@ Composition trap with an externally known additive target. Bars are twice the
 Monte-Carlo standard error over 300 repetitions.
 :::
 
-The conditional-subgroup comparison in @fig-conditional-subgroup clarifies why
-cs-PDP and RCPD should not be ranked as interchangeable estimators. The CART
-partition produces four context populations and therefore four curves. Within
-each subgroup's central focal-feature range (thick segments), the curves expose
-the common additive response shape with different subgroup compositions.
-Outside those ranges the thin segments again require extrapolative queries; for
-the two extreme groups, their central ranges do not intersect the declared
-global intervention interval. RCPD answers a different question: it seeks one
-global population that can be used at every displayed $z$.
+A conditional-subgroup comparator on the same design is reported in the
+supplement. It returns one curve per CART-induced context population rather
+than a single global curve, which is a different question and not an
+alternative estimator of the same quantity.
 
-::: {#fig-conditional-subgroup layout-ncol=2 fig-pos="H"}
-![CART partition of the context space.](../results/s34-conditional-subgroup-comparison-a.png){#fig-cs-partition}
-
-![Subgroup-specific PDPs; thick segments mark each subgroup's central 50% focal-feature range and the dashed line is the additive target.](../results/s34-conditional-subgroup-comparison-b.png){#fig-cs-curves}
-
-Conditional-subgroup-style comparison in the additive composition design.
-The comparator intentionally returns several local curves rather than one
-global effect.
-:::
 
 The interaction design identifies the narrower regime in which a relaxed fixed
 reference helps. @tbl-external-comparison anchors every method against the
@@ -738,6 +878,17 @@ summarize their distributions.
 The population change is substantial and must temper the interpretation. At
 $\epsilon=0.15$, the smallest median original-reference ISC is
 `r fmt(min(s33_audit_value("Conditional Gaussian density", "min_isc_median"), s33_audit_value("Locally scaled residual", "min_isc_median")), 3)`.
+
+The quantity Proposition \ref{prop-feasibility} identifies as decisive is
+small on these data. The median hard common mass $\gamma_j(G)$ is
+`r fmt(s33_value("Random forest", "Conditional Gaussian density", 0.15, "median_gamma"), 4)`
+under density validity and
+`r fmt(s33_value("Random forest", "Locally scaled residual", 0.15, "median_gamma"), 4)`
+under the scaled-residual rule, so a curve honouring comparability and support
+validity exactly would average over one to three per cent of the blocks. That
+is the sense in which the reading contract fails here: it fails by a wide
+margin, and it fails for both declared rules.
+
 Median effective fractions are
 `r fmt(s33_audit_value("Conditional Gaussian density", "rcpd_ess_fraction_median"), 3)`
 and
@@ -847,40 +998,53 @@ contains the adversarial extension.
 
 ## Discussion {#sec-discussion}
 
-The paper makes a focused estimand-design contribution. ISC quantifies the
-declared compatibility of ordinary-PD queries, while the admissible-extension
-envelope retains ordinary PD as the target when rejected predictions are not
-trusted. If a fixed
-support-qualified population is scientifically required, hard CSPD and RCPD
-separate model-response shape from changing context composition. RCPD uses
-classical information projection; its value is the formulation of simultaneous
-PD-query constraints and the auditable validity--fidelity frontier.
+The reading contract set out in @sec-introduction is usually not satisfiable,
+and this paper's main content is the evidence for that claim together with the
+diagnostics that make it checkable. Four measurements point the same way and
+none depends on the others. The intersection that
+Proposition \ref{prop-feasibility} shows to be necessary carries 1.3 to 2.8
+per cent of California blocks. Relaxing to a projected reference leaves an
+effective 2.6 to 5.5 per cent, and the effective-sample-size optimal projection
+improves that by at most five per cent, so the concentration is a property of
+the constraint system and not of the divergence. The finite-sample certificate
+abstains at the audit size this application provides. And a perturbation
+confined to rejected queries still moves the relaxed curve by 39 per cent of
+its effect on ordinary PD, where the exactly supported curves do not move at
+all. Pointwise diagnostics cannot anticipate any of this, because
+@sec-feasibility shows that every grid point can look unremarkable while the
+intersection is empty.
 
-The independent certificate strengthens that formulation without turning it
-into general inference for explanations. For a frozen validity rule, finite
-grid, and finite candidate family, it prevents a same-sample active constraint
-from being misread as population validity. It either certifies every declared
-grid point or abstains. Learned-rule error, continuum coverage, and uncertainty
-for the selected curve remain separate problems.
+The practical consequence is a reporting standard rather than a new default
+curve. An analyst who displays a feature-effect plot over a declared range
+should report $\gamma_j(G)$ and the pointwise support coverage profile, and
+should state which of the three clauses has been given up: ordinary PD gives up
+support validity, pointwise trimming gives up comparability, ALE and
+conditional effects give up the fixed-population intervention target, and the
+relaxed reference gives up exact validity in exchange for a declared tolerance,
+reporting its effective sample size and information distortion. None of these
+is a corrected PD, and the choice among them is a question about the scientific
+target, not about estimator quality.
 
-The empirical evidence delineates rather than erases the trade-off. Fixed
-references remove composition-driven shape in the synthetic example. In
-California, support qualification reverses the forest contrast and attenuates
-the boosting contrast, but only after substantial reweighting; the estimand is
-a small effective subpopulation. The Bank experiment shows why an audit can
-matter when predictive performance changes relatively modestly compared with a
-large PD perturbation. Secondary
-applications in the supplement show the complementary case in which severe
-support diagnostics leave centered curves nearly unchanged because projection
-weights align weakly with prediction heterogeneity.
+Where a fixed reference is genuinely required, the relaxed projection is the
+best option we know of, and its limits should be stated with it. It is
+dominated on robustness by the exactly supported curves whenever those are
+feasible, so it is the right choice only when they are not. Its weights depend
+on the declared validity rule strongly enough to move the California
+attenuation by a factor of two, which makes the rule part of the reported
+estimand rather than a tuning detail. And its certificate binds only at audit
+sizes larger than a single tabular application typically supplies.
 
-No method here is a corrected PD. The score, threshold, intervention range,
-tolerance, and reference convention determine the question being answered.
-Future work should address certified continuum constraints and inference for
-learned validity rules. A support-constrained explanation breakdown point --
-the least additional information distortion required to reverse a qualitative
-curve conclusion -- is a promising robustness extension, but is kept outside
-the present claims pending a dedicated novelty and inferential analysis.
+Three limitations bound what we have shown. The validity rule is a declared
+operational object, so every number here is conditional on it; we vary it and
+report the sensitivity, but we cannot remove the dependence. The 30 California
+splits come from one dataset and overlap heavily, so they establish
+reproducibility of direction rather than independent replication, and no
+uncertainty statement accompanies the selected curve. And the feasibility
+statement is a statement about a class of curves of the form
+$\mathbb E_R[f(z,U)]$ with $R$ fixed; methods that change the intervention
+semantics, such as causal dependence plots or generative reconstructions, are
+outside it and are not addressed by these results. Certified continuum
+constraints and inference for learned validity rules remain open.
 
 ## Code and data availability
 
