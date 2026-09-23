@@ -581,13 +581,20 @@ For the hard limit, put $C=\{h_1=\cdots=h_K=1\}$ and
 $P_C=P(\,\cdot\mid C)$. The relaxed constraints imply
 $$Q_\epsilon^*(C^c)
 \leq\sum_{k=1}^KQ_\epsilon^*\{h_k=0\}\leq K\epsilon.$$
+The union bound is what makes the limit argument work, but it is loose for
+fixed $\epsilon$: at the operating point used in the application, $K=21$ and
+$\epsilon=0.15$, the right-hand side exceeds one and the inequality says
+nothing. It constrains the limit as $\epsilon\downarrow0$, not the mass of any
+particular relaxed solution.
 Every limit point as $\epsilon\downarrow0$ is therefore supported on $C$.
 Moreover, for any $Q$ supported on $C$,
 $$D_{\mathrm{KL}}(Q\Vert P)
 =D_{\mathrm{KL}}(Q\Vert P_C)-\log P(C),$$
 so $P_C$ is the unique hard minimizer. Lower semicontinuity forces every
-relaxed limit point to equal $P_C$; convergence occurs in total variation on
-the finite pattern representation.
+relaxed limit point to equal $P_C$. Because $Q_\epsilon^*$ preserves the
+conditional distribution of $P$ inside every pattern cell, the convergence in
+fact holds in total variation on the full $\sigma$-algebra and not only on the
+finite pattern representation.
 
 ### Finite-sample audit certificate
 

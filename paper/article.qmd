@@ -25,11 +25,14 @@ abstract: |
   predeclared finite family of projected references, with abstention when none
   can be certified. Simulations isolate composition effects and the
   validity--fidelity trade-off. In a 30-split California Housing application,
-  support restriction reverses a random-forest Longitude contrast and
-  materially attenuates the corresponding boosting contrast. A controlled
-  Bank Marketing stress test shows that ordinary partial dependence can change
-  under modifications confined to rejected queries, whereas valid-query curves
-  remain stable.
+  support restriction reverses a near-zero random-forest Longitude contrast and
+  attenuates the boosting contrast on an effective subpopulation of three to
+  six per cent of blocks, with the attenuation depending on the declared
+  validity rule by a factor of two. A controlled Bank Marketing stress test
+  shows that ordinary partial dependence can change under modifications
+  confined to rejected queries. Curves supported entirely on accepted queries
+  are invariant under that perturbation; the relaxed curve, which retains mass
+  outside the common valid set, is not.
 keywords:
   - partial dependence
   - extrapolation
@@ -239,6 +242,19 @@ $$
 \operatorname{ISC}_j^R(z)
 =R\{u:(z,u)\in\mathcal V\}.
 $$ {#eq-isc}
+
+Two warnings about this name. First, the word *coverage* is used in this paper
+for two unrelated quantities: the share of PD queries a declared rule accepts,
+which is @eq-isc, and the frequentist coverage of the finite-sample certificate
+in @sec-method below. Where confusion is possible we write *support coverage*
+for the former and *tilted coverage* for the latter. Second, readers trained in
+causal inference will recognize the shape of @eq-isc as a positivity or overlap
+diagnostic, and the analogy is deliberate: both ask whether a contemplated
+intervention has empirical backing in the contexts one wants to average over.
+The analogy stops at the estimand. Positivity concerns identification of a
+causal effect on an outcome under a structural model; @eq-isc concerns whether
+a fitted function is being queried where data constrain it, and carries no
+causal assumption.
 Thus $\operatorname{ISC}_j^P(z)$ audits the exact query distribution used by
 ordinary PD. If $f\in[y_-,y_+]$ and is trusted only on accepted queries, put
 $m_{\mathcal V}(z)=\mathbb E_P[f(z,X_{-j})\mathbf 1\{(z,X_{-j})\in\mathcal V\}]$
@@ -274,9 +290,9 @@ bound is insensitive to support and stays at its worst case however small the
 rejected mass becomes. The envelope above has width
 $(y_+-y_-)\operatorname{PER}_j(z)$: the supremum is localized to the rejected
 region and the multiplier is the rejected query mass, so the bound vanishes as
-the displayed queries become supported. A per-point tightening of the constant
-is already noted in Remark 1 of @baniecki2024; the refinement here is the
-localization, not the constant.
+the displayed queries become supported. Their Remark 1 tightens a constant, but it
+does so for the data-perturbation bound of their Theorem 2; the refinement
+here is the support localization of the model-perturbation bound.
 
 For a finite grid $G$, define the contexts valid everywhere and their mass by
 $$
@@ -373,6 +389,19 @@ Rotating invalidity: a common RCPD reference can satisfy every pointwise
 coverage constraint although no context is valid across the full grid.
 :::
 
+The example also exposes a dependence that the general formulation carries.
+Feasibility here requires $\epsilon\geq1/8$, the reciprocal of the number of
+groups, and in general the admissible tolerance depends on $K$, that is, on how
+finely the displayed range is represented. A grid is an analyst's choice, so a
+construction of this kind can be made feasible or infeasible by refining it.
+The online supplement shows that for interval-valued validity rules the
+constraint set reduces exactly to a finite one and the dependence disappears.
+The rotating construction is deliberately not of that form, which is what makes
+it a clean separating example and at the same time the case where the
+representation matters. Analyses should therefore declare the grid before
+inspecting curves and report the minimum feasible tolerance, as done throughout
+@sec-experiments.
+
 ### Independent finite-sample certification
 
 The empirical projection attains its constraints on the sample used to fit
@@ -392,7 +421,8 @@ $$ {#eq-audit-moment}
 ```
 Let $U_1,\ldots,U_m$ be i.i.d. audit contexts independent of all pre-audit
 objects and put $X_{ick}=r_c(U_i)\{h_k(U_i)-\tau\}$. Let $\bar X_{ck}$ and
-$S^2_{ck}$ be its sample mean and variance and
+$S^2_{ck}$ be its sample mean and unbiased sample variance, the latter with the
+$m-1$ denominator used by @maurer2009empirical, and
 $B_{ck}=(1-\tau)+\tau\exp(-\lambda_{ck})$. For $m\geq2$, define
 $$
 L_{ck}=\bar X_{ck}
@@ -410,7 +440,9 @@ procedure abstains.
 
 The result applies a standard empirical Bernstein bound
 [@maurer2009empirical] and a union bound over candidates and grid points, in the
-spirit of learn-then-test calibration [@angelopoulos2025ltt]. Its
+spirit of learn-then-test calibration [@angelopoulos2025ltt]. @eq-audit-lcb is
+the lower-tail form, obtained by applying that bound, which is stated for the
+upper tail, to $1-X_{ick}/B_{ck}$ and rescaling. Its
 RCPD-specific step is @eq-audit-moment, which turns a self-normalized coverage
 constraint into the sign of a bounded ordinary mean. We select the certified
 candidate with smallest projection-sample KL cost. The guarantee is for the
@@ -512,8 +544,22 @@ ordinary-PD curves differ by
 hard CSPD and pointwise trimming are invariant, and RCPD reduces the difference
 to
 `r fmt(composition_results$extension_sensitivity[composition_results$method == "RCPD" & composition_results$extension == "Upward extension"], 3)`
-(@fig-composition). ALE performs well in this additive design; RCPD is not
-claimed to dominate methods with different estimands.
+(@fig-composition). ALE performs well in this additive design and is more
+robust to the off-support extension than RCPD.
+
+Because ALE appears in every comparison that follows, we state its relationship
+to these curves once rather than repeating a caveat. ALE accumulates local
+conditional prediction differences from an anchor at the lower end of the
+displayed range, so an ALE value is defined only up to that anchor. Endpoint
+contrasts and grid-mean centering both remove the anchor constant, which is why
+the comparisons here are well posed. What the centering does not remove is the
+difference in estimand: an ALE contrast integrates local derivatives taken
+under the conditional distribution at each point, whereas the curves studied
+here are differences of averages of $f(z,\cdot)$ under one population held
+fixed across $z$. ALE therefore answers a local-slope question and is not an
+estimator of the fixed-reference functional, however the two are normalized. It
+is retained in the figures as an informative reference point, and no claim of
+dominance in either direction is made or implied by the plots.
 
 ::: {#fig-composition layout-ncol=2 fig-pos="H"}
 ![Centered curves against the externally known additive target.](../results/s23-composition-trap-a.png){#fig-composition-curves}
@@ -549,21 +595,32 @@ global effect.
 :::
 
 The interaction design identifies the narrower regime in which a relaxed fixed
-reference helps. Ordinary PD is the unrestricted oracle benchmark and has the
-smallest error because its prediction surface is trusted everywhere. Among the
-support-qualified alternatives, RCPD is closest to the known
-original-population target; hard CSPD changes the context mixture sharply and
-pointwise trimming changes it with $z$ (@tbl-external-comparison).
+reference helps. @tbl-external-comparison anchors every method against the
+original-population effect. That target is the estimand ordinary PD is defined
+to estimate, so ordinary PD attains the smallest deviation by construction and
+the column is not a comparative error criterion: it measures how far each
+support-qualified curve moves away from the unrestricted population, which is
+precisely what support qualification is for. Read that way, the ordering among
+the restricted methods is informative -- RCPD moves least, hard CSPD changes
+the context mixture sharply, and pointwise trimming changes it with $z$.
+
+The composition design in @fig-composition anchors the same methods against an
+externally known additive target instead, and reverses the ordering: there
+ordinary PD is the worst performer. Neither anchor is privileged. Together they
+show that the ranking of these curves is a consequence of which population the
+analyst declares, not a property of the estimators, which is the paper's point
+rather than an inconvenience for it. We therefore make no claim that any method
+dominates another on accuracy.
 
 ```{r}
 #| label: tbl-external-comparison
-#| tbl-cap: "Externally anchored interaction comparison over 300 repetitions. Error is centered sup-norm distance from the known original-population effect divided by its amplitude."
+#| tbl-cap: "Externally anchored interaction comparison over 300 repetitions. The tabulated quantity is the centered sup-norm deviation from the known original-population effect, divided by its amplitude. Ordinary PD targets that effect by construction and is therefore the reference point, not a competitor; the quantity is a measure of population displacement, not of estimation error."
 #| tbl-pos: H
 #| results: asis
 comparison_methods <- c("Ordinary PD", "RCPD", "Hard CSPD", "PTPD", "ALE")
 comparison_table <- data.frame(
   Method = comparison_methods,
-  `Normalized shape error` = sprintf(
+  `Normalized deviation` = sprintf(
     "%.3f (%.4f)",
     vapply(comparison_methods, s29_value, numeric(1),
            variable = "normalized_shape_error"),
@@ -604,6 +661,20 @@ at 20,000 as the audit becomes less conservative. Hoeffding remains too
 conservative to certify in this range. The complete operating-characteristic
 table is in the supplement.
 
+These operating characteristics also delimit where the certificate is usable,
+and the limit is binding for the application that follows. The California
+analysis holds out 4,128 evaluation contexts, which lies between the audit size
+at which the empirical-Bernstein rule abstains and the size at which it
+certifies, and a certified run would have to split those contexts further into
+projection and audit parts. We therefore report the California curves as
+projected references without a certificate, and we do not claim that the
+declared certification workflow of @sec-method has been exercised on real data.
+On this dataset the honest outcome of that workflow is abstention. The
+certificate is a statement about what can be guaranteed at a given audit size,
+and at the sample sizes typical of a single tabular application it guarantees
+little; demonstrating it therefore requires either a larger dataset or a
+tolerance for abstention as the reported result.
+
 ### California Housing
 
 The two fitted models have comparable median held-out RMSE
@@ -627,8 +698,7 @@ while RCPD attenuates it to
 `r s33_endpoint("Gradient boosting", "Conditional Gaussian density", "rcpd")`
 and
 `r s33_endpoint("Gradient boosting", "Locally scaled residual", "rcpd")`.
-ALE is an observational comparator, not an estimator of the same fixed-reference
-functional.
+ALE is shown for reference under the reading set out in @sec-experiments.
 
 ::: {#fig-california-heldout layout-ncol=2}
 ![Forest; density validity.](../results/s33-california-longitude-application-a.png){#fig-california-forest-density}
@@ -655,9 +725,26 @@ with KL costs
 `r fmt(s33_audit_value("Conditional Gaussian density", "rcpd_kl_median"), 2)`
 and
 `r fmt(s33_audit_value("Locally scaled residual", "rcpd_kl_median"), 2)`.
+The declared rule, not only the declared tolerance, drives the reported
+magnitude. The two boosting attenuations above differ by roughly a factor of
+two, and the spread across the 30 splits under the scaled-residual rule is
+wider than the attenuation itself. The direction of the forest result is
+reproducible across all 30 splits; its size is not a stable quantity but a
+consequence of a modelling choice that the analyst must declare and defend.
+Reporting an RCPD curve without its validity rule, tolerance, effective sample
+size, and KL cost is therefore not interpretable.
+
 Thus RCPD reveals a different, small effective subpopulation rather than a
 correction toward a privileged truth. Complete balance, active-set, and
 sensitivity diagnostics are in the supplement.
+
+Two limits of this evidence should be stated. The 30 splits are drawn from one
+dataset of 20,640 blocks and overlap heavily, so they quantify split-to-split
+stability of the procedure and not independent replication. And no uncertainty
+statement accompanies the selected curve itself: the intervals shown summarize
+variation across splits, not sampling error of the displayed RCPD estimate
+conditional on the learned reference. The application therefore supports
+claims about reproducibility and direction, not about magnitude.
 
 The reference-population diagnostics in @fig-california-reference make that
 change concrete. Both validity rules upweight blocks with systematically
@@ -675,6 +762,17 @@ $$
 =\operatorname{Cov}_P\!\left\{
 \frac{dQ_\epsilon^*}{dP}(U),f(z,U)\right\}.
 $$ {#eq-rcpd-covariance}
+
+Replacing the reference population is a distribution perturbation, so the
+governing prior bound here is Theorem 2 of @baniecki2024 rather than the
+model-perturbation bound discussed in @sec-method: that theorem limits the
+displacement by $2B\,d_{\mathrm{TV}}$ for bounded predictions.
+@eq-rcpd-covariance is exact rather than an inequality and is informative in a
+different way, because it attributes the displacement to the alignment between
+the projected weights and prediction heterogeneity instead of bounding it by a
+worst case. The two statements are complementary: the total-variation bound
+says how large the displacement can be, the covariance identity says what
+produces it.
 
 ::: {#fig-california-reference layout-ncol=2}
 ![Standardized context-mean shifts under the projected references; points are medians and segments are interquartile ranges across splits.](../results/s33-california-reference-diagnostics-a.png){#fig-california-balance}
@@ -702,6 +800,19 @@ curve changes by `r fmt(s32_distance("Ordinary PD"), 3)` in sup norm. RCPD
 attenuates the change to `r fmt(s32_distance("RCPD"), 3)`, while hard CSPD and
 pointwise trimming are invariant because the perturbation is zero on all their
 queried pairs (@fig-bank-stress).
+
+This comparison is unfavourable to the relaxed curve and we state it plainly.
+RCPD retains
+`r fmt(100 * s32_distance("RCPD") / s32_distance("Ordinary PD"), 0)`\% of the
+ordinary-PD perturbation, whereas the two curves supported entirely on accepted
+queries retain none of it. The same ordering appears in the composition
+simulation (@fig-composition). Relaxation buys feasibility, and it pays for it
+in exactly this currency: a reference that keeps mass outside the common valid
+set keeps a share of whatever happens there. An analyst whose sole concern is
+insensitivity to unsupported predictions should use hard CSPD or pointwise
+trimming, accepting the empty common set or the moving reference that those
+choices bring. RCPD is the option for the case where a fixed reference is
+required and the hard common set is too small to support one.
 
 ::: {#fig-bank-stress layout="[[2,1]]" fig-pos="H"}
 ![Original and perturbed curves.](../results/s32-bank-offsupport-stress-a.png){#fig-bank-stress-curves}
