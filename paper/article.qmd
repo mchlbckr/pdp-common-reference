@@ -70,6 +70,7 @@ california_results <- targets::tar_read(s33_summary, store = "../_targets")
 california_audit <- targets::tar_read(s33_audit, store = "../_targets")
 wine_case <- targets::tar_read(case_study_s16, store = "../_targets")
 mixed_cases <- targets::tar_read(case_studies_s17, store = "../_targets")
+matrix_summary <- targets::tar_read(s14_summary, store = "../_targets")
 
 fmt <- function(x, digits = 3L) formatC(x, format = "f", digits = digits)
 s29_value <- function(method, variable) {
@@ -269,7 +270,7 @@ visible here: the gap between pointwise and simultaneous validity, the
 degeneracy of the exact solution, the moving population of the trimmed
 alternative, and the concentration that relaxation trades against validity.
 
-### Pointwise admissibility does not imply simultaneous admissibility
+### Pointwise admissibility does not imply simultaneous admissibility {#sec-rotating}
 
 The intersection can be empty although no individual grid point looks
 problematic, so $\gamma_j(G)$ cannot be inferred from pointwise diagnostics.
@@ -301,16 +302,66 @@ different in degree only.
 
 What separates them is how strongly the focal predictor is coupled to the
 context, together with how wide a range is displayed. The experiment matrix of
-@sec-experiments varies both deliberately: at correlation 0.2 the intersection
-carries essentially the whole population at every grid width, while at
-correlation 0.8 it falls to 0.68, 0.42, and 0.10 as the displayed half-width
-grows from 0.40 to 1.10. The contract is therefore a checkable property of the
+@sec-experiments varies both deliberately, and @tbl-gamma-geometry reports the
+result under the oracle validity rule, which isolates the geometry from any
+error in learning the rule. At correlation 0.2 the intersection carries the
+whole population at every displayed width. At correlation 0.8 it falls from
+0.67 to 0.08 as the half-width grows from 0.40 to 1.10, so the same dependence
+structure is benign or prohibitive depending on how much of the range the
+analyst insists on showing.
+
+```{r}
+#| label: tbl-gamma-geometry
+#| tbl-cap: "Intersection mass under the oracle validity rule, by predictor correlation and displayed half-width. Medians over the repetitions of the experiment matrix, pooled across the six prediction-model classes. The oracle rule is used so the table measures the geometry of the dependence structure rather than validity-learning error."
+#| tbl-pos: H
+#| results: asis
+oracle_cspd <- matrix_summary[
+  matrix_summary$method == "CSPD" & matrix_summary$learner == "oracle",
+]
+widths <- sort(unique(oracle_cspd$grid_half_width))
+rhos <- sort(unique(oracle_cspd$rho))
+cells <- vapply(widths, function(w) {
+  vapply(rhos, function(r) {
+    stats::median(oracle_cspd$gamma[
+      oracle_cspd$rho == r & oracle_cspd$grid_half_width == w
+    ])
+  }, numeric(1))
+}, numeric(length(rhos)))
+geometry_table <- data.frame(
+  `Correlation` = fmt(rhos, 1),
+  stats::setNames(
+    as.data.frame(matrix(fmt(cells, 3), nrow = length(rhos))),
+    sprintf("Half-width %.2f", widths)
+  ),
+  check.names = FALSE, stringsAsFactors = FALSE
+)
+knitr::kable(geometry_table, format = "latex", booktabs = TRUE, escape = FALSE,
+             align = c("l", "r", "r", "r"), row.names = FALSE)
+```
+ The last column separates two things that $\gamma_j(G)$ alone conflates. A
+small intersection can arise because support is scarce at every grid point, or
+because the valid set is large at each point but moves as $z$ varies. The ratio
+$\min_z\operatorname{ISC}^P(z)/\gamma_j(G)$ isolates the second: it is one
+when the valid sets are nested, and it diverges in the rotating construction of
+@sec-rotating, where every point accepts most contexts and none accepts them
+all. Across the applications it orders exactly as the narrative does. Bank
+Marketing sits at 1.0, so its valid sets are effectively nested and the
+contract holds for the ordinary reason that support is ample. California
+reaches
+`r fmt(s33_audit_value("Locally scaled residual", "min_isc_median") / s33_value("Random forest", "Locally scaled residual", 0.15, "median_gamma"), 1)`
+under the scaled-residual rule, so its intersection is small not
+because any single query is poorly supported but because the supported set
+moves across the displayed range. That is the regime this paper is about, and
+the pair $(\gamma_j(G),\min_z\operatorname{ISC}^P/\gamma_j(G))$ identifies
+it where $\gamma_j(G)$ alone would not.
+
+The contract is therefore a checkable property of the
 dependence structure and the declared range, not a condition to be assumed
 either way, and $\gamma_j(G)$ is what checks it.
 
 ```{r}
 #| label: tbl-gamma-applications
-#| tbl-cap: "Intersection mass and support coverage in the four applications, at the grid and validity rule each one declares. California entries are medians over 30 splits under the two rules; the others are single held-out evaluations. The contract of Proposition 1 is satisfiable in Bank Marketing and unusable in California."
+#| tbl-cap: "Intersection mass and support coverage in the four applications, at the grid and validity rule each one declares. California entries are medians over 30 splits under the two rules; the others are single held-out evaluations. Rotation is $\\min_z \\mathrm{ISC}^P(z)/\\gamma_j(G)$, which separates pointwise scarcity of support from movement of the valid set across the grid. The contract of Proposition 1 is satisfiable in Bank Marketing and unusable in California."
 #| tbl-pos: H
 #| results: asis
 application_row <- function(label, gamma, min_isc, mean_isc, n) {
@@ -319,6 +370,7 @@ application_row <- function(label, gamma, min_isc, mean_isc, n) {
     `$\\gamma_j(G)$` = fmt(gamma, 3),
     `Minimum ISC` = fmt(min_isc, 3),
     `Mean ISC` = fmt(mean_isc, 3),
+    `Rotation` = fmt(min_isc / gamma, 1),
     `Contexts` = format(n, big.mark = ","),
     check.names = FALSE, stringsAsFactors = FALSE
   )
@@ -351,7 +403,7 @@ gamma_table <- rbind(
                   bank$n_evaluation[[1L]])
 )
 knitr::kable(gamma_table, format = "latex", booktabs = TRUE, escape = FALSE,
-             align = c("l", "r", "r", "r", "r"), row.names = FALSE)
+             align = c("l", "r", "r", "r", "r", "r"), row.names = FALSE)
 ```
  The rest of this paper is
 about the case where the check fails: measure how far the ordinary curve is
@@ -575,7 +627,8 @@ on both the simulation designs and the California validity matrices: across
 tolerances the $\chi^2$ projection improves the effective sample size by
 between 0 and 5 per cent, with curve error and off-support sensitivity
 unchanged to three decimal places. At the application's operating point the
-effective fraction moves from 0.026 to 0.026. The concentration is therefore a
+effective fraction moves from 0.026 to 0.026 under the scaled-residual rule and
+from 0.051 to 0.052 under the density rule. The concentration is therefore a
 property of the query-validity constraint system and not an artifact of
 choosing KL, and it cannot be optimised away by a different divergence. The
 $\chi^2$ solution also assigns exactly zero weight to 36--43 per cent of

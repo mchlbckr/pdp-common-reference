@@ -119,12 +119,18 @@ and validity learner. It is a stress test of the diagnostic geometry rather
 than a ranking of feature-effect methods.
 
 ::: {#fig-s-experiment-matrix layout-ncol=2}
-![Pointwise support coverage.](../results/s14-experiment-matrix-a.png){#fig-s-matrix-isc}
+![Hard common mass $\widehat\gamma(G)$.](../results/s14-experiment-matrix-a.png){#fig-s-matrix-gamma}
 
-![Hard common mass.](../results/s14-experiment-matrix-b.png){#fig-s-matrix-gamma}
+![Pointwise support coverage $\widehat{\mathrm{ISC}}^P$.](../results/s14-experiment-matrix-b.png){#fig-s-matrix-isc}
 
-Broad simulation matrix. Points summarize 100 repetitions for each declared
-combination; error bars are twice the Monte-Carlo standard error.
+Broad simulation matrix at the widest displayed half-width. The four series in
+each panel are the validity rules, in the order oracle, split residual, locally
+scaled, and kNN, reading downwards at correlation 0.8; they are not the grid
+widths, which are tabulated by correlation in the main article. Points
+summarize 100 repetitions for each declared combination, pooled across the six
+prediction-model classes; error bars are twice the Monte-Carlo standard error.
+Note that $\widehat\gamma(G)\leq\min_z\widehat{\mathrm{ISC}}^P(z)$ always,
+which orders the two panels.
 :::
 
 The relaxation path makes the validity--fidelity trade-off explicit and keeps
@@ -644,7 +650,10 @@ knitr::kable(divergence_table, format = "latex", booktabs = TRUE,
              row.names = FALSE)
 ```
 
-The paired contrasts make the size of the gap explicit. Across the eight
+The paired contrasts make the size of the gap explicit. They are medians of
+the per-repetition ratio, which is the quantity of interest but is not the
+ratio of the medians in the table above; the two differ slightly because the
+median is not a linear operator. Across the eight
 simulation designs the median ratio of $\chi^2$ to KL effective sample size
 ranges from
 `r fmt(min(s40$contrasts$median_ess_ratio), 3)` to
